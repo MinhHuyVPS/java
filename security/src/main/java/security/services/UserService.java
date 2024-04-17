@@ -5,6 +5,8 @@ import org.springframework.stereotype.Service;
 import security.dto.request.UserCreationRequest;
 import security.dto.request.UserUpdateRequest;
 import security.entity.User;
+import security.exception.AppException;
+import security.exception.ErrorCode;
 import security.repository.IUserRepository;
 
 import java.util.List;
@@ -16,7 +18,7 @@ public class UserService {
     public User createRequest(UserCreationRequest request){
         User user = new User();
         if(userRepository.existsByUsername(request.getUsername())){
-            throw new RuntimeException("Username already exists");
+            throw new AppException(ErrorCode.USER_ALREADY_EXISTS);
         }
         user.setUsername(request.getUsername());
         user.setPassword(request.getPassword());
