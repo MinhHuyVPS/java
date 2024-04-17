@@ -23,4 +23,5 @@ public class UserCreationRequest {
     private String lastname;
     private String phone;
     private LocalDate birthday;
+
 }
