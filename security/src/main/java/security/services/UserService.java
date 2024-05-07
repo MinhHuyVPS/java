@@ -1,50 +1,74 @@
 package security.services;
 
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PostAuthorize;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import security.dto.request.UserCreationRequest;
 import security.dto.request.UserUpdateRequest;
+import security.dto.response.UserResponse;
 import security.entity.User;
+import security.enums.Role;
 import security.exception.AppException;
 import security.exception.ErrorCode;
+import security.mapper.UserMapper;
 import security.repository.IUserRepository;
 
+import java.util.HashSet;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class UserService {
-    @Autowired
-    private IUserRepository userRepository;
-    public User createRequest(UserCreationRequest request){
-        User user = new User();
+
+    PasswordEncoder passwordEncoder;
+    IUserRepository userRepository;
+    UserMapper userMapper;
+    public UserResponse createRequest(UserCreationRequest request){
         if(userRepository.existsByUsername(request.getUsername())){
             throw new AppException(ErrorCode.USER_ALREADY_EXISTS);
         }
-        user.setUsername(request.getUsername());
-        user.setPassword(request.getPassword());
-        user.setEmail(request.getEmail());
-        user.setFirstname(request.getFirstname());
-        user.setLastname(request.getLastname());
-        user.setPhone(request.getPhone());
-        user.setBirthday(request.getBirthday());
-        return userRepository.save(user);
+        User user = userMapper.toUser(request);
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        HashSet<String> roles = new HashSet<>();
+        roles.add(Role.USER.name());
+//        user.setRoles(roles);
+        return userMapper.toUserResponse(userRepository.save(user));
     }
-    public List<User> getAllUsers(){
-        return userRepository.findAll();
+    public UserResponse getMyInfo(){
+        var context = SecurityContextHolder.getContext();
+        String username = context.getAuthentication().getName();
+        User user = userRepository.findByUsername(username).orElseThrow(
+                () -> new AppException(ErrorCode.USER_NOT_FOUND)
+        );
+        return userMapper.toUserResponse(user);
     }
-    public User getUserById(String id){
-        return userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<UserResponse> getAllUsers(){
+        return userRepository.findAll().stream()
+                .map(userMapper::toUserResponse).toList();
     }
-    public User updateUser(String userId, UserUpdateRequest request){
-        User users = getUserById(userId);
-        users.setBirthday(request.getBirthday());
-        users.setFirstname(request.getFirstname());
-        users.setLastname(request.getLastname());
-        users.setEmail(request.getEmail());
-        users.setPhone(request.getPhone());
-        return userRepository.save(users);
+    @PostAuthorize("returnObject.username == authentication.name")
+    public UserResponse getUserById(String id){
+        return userMapper.toUserResponse(userRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND)));
     }
+    @PostAuthorize("returnObject.username == authentication.name")
+    public UserResponse updateUser(String userId, UserUpdateRequest request){
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        userMapper.updateUser(user, request);
+        return userMapper.toUserResponse(userRepository.save(user));
+    }
+    @PreAuthorize("hasRole('ADMIN')")
     public void deleteUser(String userId) {
         userRepository.deleteById(userId);
     }

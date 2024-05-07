@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
-import java.util.Locale;
+import java.util.Set;
 
 @Entity
 @Table(name = "_user")
@@ -23,4 +23,7 @@ public class User {
     private String lastname;
     private String phone;
     private LocalDate birthday;
+    @ManyToMany
+    private Set<Role> roles;
 }
+ 
