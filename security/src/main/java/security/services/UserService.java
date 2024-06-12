@@ -3,12 +3,9 @@ package security.services;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import security.dto.request.UserCreationRequest;
@@ -19,6 +16,7 @@ import security.enums.Role;
 import security.exception.AppException;
 import security.exception.ErrorCode;
 import security.mapper.UserMapper;
+import security.repository.IRoleRepository;
 import security.repository.IUserRepository;
 
 import java.util.HashSet;
@@ -28,7 +26,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class UserService {
-
+    IRoleRepository roleRepository;
     PasswordEncoder passwordEncoder;
     IUserRepository userRepository;
     UserMapper userMapper;
@@ -66,6 +64,9 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         userMapper.updateUser(user, request);
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        List<security.entity.Role> roles = roleRepository.findAllById(request.getRoles());
+        user.setRoles(new HashSet<>(roles));
         return userMapper.toUserResponse(userRepository.save(user));
     }
     @PreAuthorize("hasRole('ADMIN')")

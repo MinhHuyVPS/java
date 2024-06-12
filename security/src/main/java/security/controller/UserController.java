@@ -49,7 +49,7 @@ public class UserController {
     @PutMapping("/{userId}")
     public ApiResponse<UserResponse> updateUser(@PathVariable String userId, @RequestBody UserUpdateRequest request){
         return ApiResponse.<UserResponse>builder()
-                .result(userService.getUserById(userId))
+                .result(userService.updateUser(userId, request))
                 .build();
     }
     @DeleteMapping("/{userId}")
